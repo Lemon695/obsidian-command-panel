@@ -112,9 +112,14 @@ export class CommandPanelView extends ItemView {
 				return true;
 			});
 
-		// Render "Recently Used" (Simple implementation for P0)
+		// Render "Recently Used"
 		if (this.plugin.settings.showRecentlyUsed && !this.searchQuery) {
 			this.renderRecentlyUsed(groupsContainer);
+		}
+
+		// Render "Most Used"
+		if (this.plugin.settings.showMostUsed && !this.searchQuery) {
+			this.renderMostUsed(groupsContainer);
 		}
 
 		// Render User Groups
@@ -169,6 +174,24 @@ export class CommandPanelView extends ItemView {
 
 		recentIds.forEach(id => {
 			this.renderCommandButton(commandsDiv, {commandId: id, order: 0}, 'recent', true);
+		});
+	}
+
+	renderMostUsed(container: HTMLElement) {
+		const mostUsedIds = this.plugin.getMostUsedCommands();
+		if (mostUsedIds.length === 0) return;
+
+		const groupDiv = container.createDiv('command-panel-group');
+		const header = groupDiv.createDiv('command-panel-group-header');
+		setIcon(header.createSpan('command-panel-group-icon'), 'trending-up');
+		header.createSpan({text: 'Most Used', cls: 'command-panel-group-name'});
+
+		const commandsDiv = groupDiv.createDiv('command-panel-commands');
+		commandsDiv.addClass(`layout-${this.plugin.settings.layout}`);
+
+		mostUsedIds.forEach(id => {
+			const count = this.plugin.settings.commandUsageCount[id] || 0;
+			this.renderCommandButton(commandsDiv, {commandId: id, order: 0}, 'most-used', true, count);
 		});
 	}
 
@@ -291,7 +314,7 @@ export class CommandPanelView extends ItemView {
 		}
 	}
 
-	renderCommandButton(container: HTMLElement, cmdItem: CommandItem, groupId: string, isReadOnly = false) {
+	renderCommandButton(container: HTMLElement, cmdItem: CommandItem, groupId: string, isReadOnly = false, usageCount?: number) {
 		const app = this.app as AppWithCommands;
 		const realCommand = app.commands.findCommand(cmdItem.commandId);
 
@@ -341,6 +364,12 @@ export class CommandPanelView extends ItemView {
 			}
 		}
 
+		// Usage Count Badge (for most used)
+		if (usageCount !== undefined && usageCount > 0) {
+			const badge = btn.createDiv('command-panel-button-badge');
+			badge.setText(usageCount.toString());
+		}
+
 		// Tooltip
 		if (this.plugin.settings.showTooltips) {
 			btn.setAttribute('aria-label', realCommand.name);
@@ -360,9 +389,34 @@ export class CommandPanelView extends ItemView {
 		});
 
 		// Right Click -> Context Menu
-		if (!isReadOnly) {
-			btn.addEventListener('contextmenu', (e) => {
-				const menu = new Menu();
+		btn.addEventListener('contextmenu', (e) => {
+			const menu = new Menu();
+
+			// 特殊处理：最近使用和最多使用
+			if (groupId === 'recent') {
+				menu.addItem(item =>
+					item.setTitle('Remove from Recently Used').setIcon('x').onClick(() => {
+						this.plugin.removeFromRecent(cmdItem.commandId);
+						this.render();
+					})
+				);
+				menu.showAtMouseEvent(e);
+				return;
+			}
+
+			if (groupId === 'most-used') {
+				menu.addItem(item =>
+					item.setTitle('Reset Usage Count').setIcon('rotate-ccw').onClick(() => {
+						this.plugin.resetCommandUsage(cmdItem.commandId);
+						this.render();
+					})
+				);
+				menu.showAtMouseEvent(e);
+				return;
+			}
+
+			// 普通命令的右键菜单
+			if (!isReadOnly) {
 
 				// 1. 编辑 (Edit)
 				menu.addItem(item =>
@@ -423,8 +477,8 @@ export class CommandPanelView extends ItemView {
 				);
 
 				menu.showAtMouseEvent(e);
-			});
-		}
+			}
+		});
 
 		// Click -> Execute (增加执行反馈)
 		btn.addEventListener('click', () => {

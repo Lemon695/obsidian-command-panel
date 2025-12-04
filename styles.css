@@ -159,6 +159,20 @@
 	border-radius: 3px;
 }
 
+.command-panel-button-badge {
+	position: absolute;
+	top: 2px;
+	left: 4px;
+	font-size: 0.65em;
+	font-weight: 600;
+	color: var(--text-on-accent);
+	background: var(--interactive-accent);
+	padding: 2px 6px;
+	border-radius: 10px;
+	min-width: 18px;
+	text-align: center;
+}
+
 /* Add Buttons */
 .command-panel-add-group {
 	margin-top: 15px;
@@ -495,6 +509,20 @@
 	padding: 2px 5px;
 	border-radius: 4px;
 	font-family: var(--font-monospace);
+}
+
+.command-btn-minimal .cmd-badge {
+	position: absolute;
+	top: 4px;
+	left: 4px;
+	font-size: 0.7em;
+	font-weight: 600;
+	color: var(--text-on-accent);
+	background: var(--interactive-accent);
+	padding: 2px 7px;
+	border-radius: 12px;
+	min-width: 20px;
+	text-align: center;
 }
 
 /* Colored Buttons */

@@ -210,4 +210,22 @@ export default class CommandPanelPlugin extends Plugin {
 		}
 		this.saveSettings();
 	}
+
+	removeFromRecent(commandId: string) {
+		this.settings.recentlyUsed = this.settings.recentlyUsed.filter(id => id !== commandId);
+		this.saveSettings();
+	}
+
+	getMostUsedCommands(): string[] {
+		// 按使用次数排序，返回前 N 个
+		return Object.entries(this.settings.commandUsageCount)
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, this.settings.mostUsedLimit)
+			.map(([id]) => id);
+	}
+
+	resetCommandUsage(commandId: string) {
+		delete this.settings.commandUsageCount[commandId];
+		this.saveSettings();
+	}
 }

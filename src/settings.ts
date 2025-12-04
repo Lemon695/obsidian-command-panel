@@ -31,10 +31,45 @@ export class CommandPanelSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Show Recently Used')
+			.setDesc('Display recently executed commands at the top.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.showRecentlyUsed)
 				.onChange(async (value) => {
 					this.plugin.settings.showRecentlyUsed = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Recently Used Limit')
+			.setDesc('Maximum number of recent commands to show.')
+			.addSlider(slider => slider
+				.setLimits(5, 50, 5)
+				.setValue(this.plugin.settings.recentlyUsedLimit)
+				.setDynamicTooltip()
+				.onChange(async (value) => {
+					this.plugin.settings.recentlyUsedLimit = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Show Most Used')
+			.setDesc('Display most frequently used commands.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.showMostUsed)
+				.onChange(async (value) => {
+					this.plugin.settings.showMostUsed = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Most Used Limit')
+			.setDesc('Maximum number of most used commands to show.')
+			.addSlider(slider => slider
+				.setLimits(5, 50, 5)
+				.setValue(this.plugin.settings.mostUsedLimit)
+				.setDynamicTooltip()
+				.onChange(async (value) => {
+					this.plugin.settings.mostUsedLimit = value;
 					await this.plugin.saveSettings();
 				}));
 

@@ -1,7 +1,9 @@
-import { App, Modal, setIcon, Notice, Platform } from 'obsidian';
+import { App, Modal, setIcon, Notice, Platform, Menu } from 'obsidian';
 import CommandPanelPlugin from '../main';
 import { CommandGroup, CommandItem, AppWithCommands } from '../types';
 import { ICON_DEFAULT_COMMAND } from '../utils/constants';
+import { AddCommandModal } from './AddCommandModal';
+import {EditCommandModal} from "../views/EditCommandModal";
 
 export class CommandPanelModal extends Modal {
 	plugin: CommandPanelPlugin;
@@ -108,6 +110,11 @@ export class CommandPanelModal extends Modal {
 			this.renderRecentlyUsed(this.contentContainerEl);
 		}
 
+		// 最多使用分组
+		if (this.plugin.settings.showMostUsed && !this.searchQuery) {
+			this.renderMostUsed(this.contentContainerEl);
+		}
+
 		// 用户分组
 		const groupsToRender = this.plugin.settings.groups
 			.filter(group => {
@@ -163,7 +170,29 @@ export class CommandPanelModal extends Modal {
 		commandsEl.style.setProperty('--grid-columns', this.plugin.settings.gridColumns.toString());
 
 		recentIds.slice(0, this.plugin.settings.recentlyUsedLimit).forEach(id => {
-			this.renderButton(commandsEl, { commandId: id, order: 0 }, true);
+			this.renderButton(commandsEl, { commandId: id, order: 0 }, 'recent');
+		});
+	}
+
+	renderMostUsed(container: HTMLElement) {
+		const mostUsedIds = this.plugin.getMostUsedCommands();
+		if (mostUsedIds.length === 0) return;
+
+		const groupEl = container.createDiv('command-panel-group-minimal');
+
+		// 分组标题
+		const header = groupEl.createDiv('group-header-minimal');
+		const iconSpan = header.createSpan('group-icon-minimal');
+		setIcon(iconSpan, 'trending-up');
+		header.createSpan({ text: 'Most Used' });
+
+		// 命令网格
+		const commandsEl = groupEl.createDiv('command-grid-minimal');
+		commandsEl.style.setProperty('--grid-columns', this.plugin.settings.gridColumns.toString());
+
+		mostUsedIds.forEach(id => {
+			const count = this.plugin.settings.commandUsageCount[id] || 0;
+			this.renderButton(commandsEl, { commandId: id, order: 0 }, 'most-used', count);
 		});
 	}
 
@@ -192,21 +221,70 @@ export class CommandPanelModal extends Modal {
 		group.commands
 			.sort((a, b) => a.order - b.order)
 			.forEach(cmd => {
-				this.renderButton(commandsEl, cmd, false);
+				this.renderButton(commandsEl, cmd, group.id);
 			});
 	}
 
 	openAddCommandModal(groupId: string) {
-		// 导入 AddCommandModal
-		const { AddCommandModal } = require('./AddCommandModal');
-		new AddCommandModal(this.app, (cmd: { id: string; }) => {
+		new AddCommandModal(this.app, (cmd) => {
 			this.plugin.addCommandToGroup(groupId, cmd.id);
-			// 刷新内容区域
 			this.renderContent();
 		}).open();
 	}
 
-	renderButton(container: HTMLElement, cmdItem: CommandItem, isReadOnly: boolean = false) {
+	showCommandContextMenu(e: MouseEvent, cmdItem: CommandItem, groupId: string) {
+		const menu = new Menu();
+
+		// 最近使用 - 移除
+		if (groupId === 'recent') {
+			menu.addItem(item =>
+				item.setTitle('Remove from Recently Used').setIcon('x').onClick(() => {
+					this.plugin.removeFromRecent(cmdItem.commandId);
+					this.renderContent();
+				})
+			);
+		}
+		// 最多使用 - 重置计数
+		else if (groupId === 'most-used') {
+			menu.addItem(item =>
+				item.setTitle('Reset Usage Count').setIcon('rotate-ccw').onClick(() => {
+					this.plugin.resetCommandUsage(cmdItem.commandId);
+					this.renderContent();
+				})
+			);
+		}
+		// 普通分组 - 完整菜单
+		else if (groupId) {
+			menu.addItem(item =>
+				item.setTitle('Edit').setIcon('pencil').onClick(() => {
+					new EditCommandModal(this.app, cmdItem, (updates) => {
+						this.plugin.updateCommand(groupId, cmdItem.commandId, updates);
+						this.renderContent();
+					}).open();
+				})
+			);
+
+			menu.addSeparator();
+
+			menu.addItem(item =>
+				item.setTitle('Copy Command ID').setIcon('copy').onClick(() => {
+					navigator.clipboard.writeText(cmdItem.commandId);
+					new Notice('Command ID copied to clipboard');
+				})
+			);
+
+			menu.addItem(item =>
+				item.setTitle('Remove').setIcon('trash').setWarning(true).onClick(() => {
+					this.plugin.removeCommandFromGroup(groupId, cmdItem.commandId);
+					this.renderContent();
+				})
+			);
+		}
+
+		menu.showAtMouseEvent(e);
+	}
+
+	renderButton(container: HTMLElement, cmdItem: CommandItem, groupId: string = '', usageCount?: number) {
 		const app = this.app as AppWithCommands;
 		const realCmd = app.commands.findCommand(cmdItem.commandId);
 		if (!realCmd) return;
@@ -238,10 +316,22 @@ export class CommandPanelModal extends Modal {
 			}
 		}
 
+		// 使用次数徽章
+		if (usageCount !== undefined && usageCount > 0) {
+			const badge = btn.createDiv('cmd-badge');
+			badge.setText(usageCount.toString());
+		}
+
 		// 工具提示
 		if (this.plugin.settings.showTooltips) {
 			btn.setAttribute('aria-label', realCmd.name);
 		}
+
+		// 右键菜单
+		btn.addEventListener('contextmenu', (e) => {
+			e.preventDefault();
+			this.showCommandContextMenu(e, cmdItem, groupId);
+		});
 
 		// 点击执行
 		btn.addEventListener('click', (e) => {

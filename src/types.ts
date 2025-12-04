@@ -35,6 +35,8 @@ export interface CommandPanelSettings {
 
 	showRecentlyUsed: boolean;
 	recentlyUsedLimit: number;
+	showMostUsed: boolean;
+	mostUsedLimit: number;
 	showHotkeys: boolean;
 	showTooltips: boolean;
 	groups: CommandGroup[];
@@ -50,6 +52,8 @@ export const DEFAULT_SETTINGS: CommandPanelSettings = {
 
 	showRecentlyUsed: true,
 	recentlyUsedLimit: 20,
+	showMostUsed: true,
+	mostUsedLimit: 20,
 	showHotkeys: true,
 	showTooltips: true,
 	groups: [],
