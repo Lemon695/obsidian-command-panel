@@ -199,6 +199,15 @@ export class CommandPanelView extends ItemView {
 		setIcon(header.createSpan('command-panel-group-icon'), 'clock');
 		header.createSpan({text: 'Recently Used', cls: 'command-panel-group-name'});
 
+		// 添加更多菜单
+		const controls = header.createDiv('command-panel-group-controls');
+		const moreBtn = controls.createSpan('command-panel-group-more');
+		setIcon(moreBtn, 'more-horizontal');
+		moreBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			this.showSpecialGroupMenu(e, 'recent');
+		});
+
 		const commandsDiv = groupDiv.createDiv('command-panel-commands');
 		commandsDiv.addClass(`layout-${this.plugin.settings.layout}`);
 
@@ -213,14 +222,23 @@ export class CommandPanelView extends ItemView {
 
 		const groupDiv = container.createDiv('command-panel-group');
 		const header = groupDiv.createDiv('command-panel-group-header');
-		setIcon(header.createSpan('command-panel-group-icon'), 'star');
+		setIcon(header.createSpan('command-panel-group-icon'), 'heart');
 		header.createSpan({text: 'Favorites', cls: 'command-panel-group-name'});
+
+		// 添加更多菜单
+		const controls = header.createDiv('command-panel-group-controls');
+		const moreBtn = controls.createSpan('command-panel-group-more');
+		setIcon(moreBtn, 'more-horizontal');
+		moreBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			this.showSpecialGroupMenu(e, 'favorites');
+		});
 
 		const commandsDiv = groupDiv.createDiv('command-panel-commands');
 		commandsDiv.addClass(`layout-${this.plugin.settings.layout}`);
 
 		favorites.forEach(({ groupId, command }) => {
-			this.renderCommandButton(commandsDiv, command, groupId, true);
+			this.renderCommandButton(commandsDiv, command, 'favorites', true);
 		});
 	}
 
@@ -232,6 +250,15 @@ export class CommandPanelView extends ItemView {
 		const header = groupDiv.createDiv('command-panel-group-header');
 		setIcon(header.createSpan('command-panel-group-icon'), 'trending-up');
 		header.createSpan({text: 'Most Used', cls: 'command-panel-group-name'});
+
+		// 添加更多菜单
+		const controls = header.createDiv('command-panel-group-controls');
+		const moreBtn = controls.createSpan('command-panel-group-more');
+		setIcon(moreBtn, 'more-horizontal');
+		moreBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			this.showSpecialGroupMenu(e, 'most-used');
+		});
 
 		const commandsDiv = groupDiv.createDiv('command-panel-commands');
 		commandsDiv.addClass(`layout-${this.plugin.settings.layout}`);
@@ -401,10 +428,10 @@ export class CommandPanelView extends ItemView {
 			container.addClass(`button-size-${this.plugin.settings.buttonSize}`);
 		}
 
-		// Favorite Star
+		// Favorite Heart
 		if (cmdItem.favorite && groupId !== 'favorites') {
-			const star = btn.createDiv('command-panel-button-star');
-			setIcon(star, 'star');
+			const heart = btn.createDiv('command-panel-button-favorite');
+			setIcon(heart, 'heart');
 		}
 
 		// Icon
@@ -457,7 +484,7 @@ export class CommandPanelView extends ItemView {
 			if (groupId === 'favorites') {
 				// 收藏分组中的命令可以取消收藏
 				menu.addItem(item =>
-					item.setTitle('Remove from Favorites').setIcon('star-off').onClick(() => {
+					item.setTitle('Remove from Favorites').setIcon('heart-off').onClick(() => {
 						// 找到原始分组并取消收藏
 						const favorites = this.plugin.getFavoriteCommands();
 						const fav = favorites.find(f => f.command.commandId === cmdItem.commandId);
@@ -500,7 +527,7 @@ export class CommandPanelView extends ItemView {
 				menu.addItem(item =>
 					item
 						.setTitle(cmdItem.favorite ? 'Remove from Favorites' : 'Add to Favorites')
-						.setIcon(cmdItem.favorite ? 'star-off' : 'star')
+						.setIcon(cmdItem.favorite ? 'heart-off' : 'heart')
 						.onClick(() => {
 							this.plugin.toggleFavorite(groupId, cmdItem.commandId);
 							this.render();
@@ -697,6 +724,47 @@ export class CommandPanelView extends ItemView {
 				this.render();
 			})
 		);
+		menu.showAtMouseEvent(e);
+	}
+
+	showSpecialGroupMenu(e: MouseEvent, groupType: 'favorites' | 'recent' | 'most-used') {
+		const menu = new Menu();
+		
+		if (groupType === 'favorites') {
+			menu.addItem(item =>
+				item.setTitle('Clear All Favorites').setIcon('heart-off').setWarning(true).onClick(() => {
+					if (confirm('Are you sure you want to remove all favorites?')) {
+						// 清除所有收藏
+						this.plugin.settings.groups.forEach(group => {
+							group.commands.forEach(cmd => {
+								cmd.favorite = false;
+							});
+						});
+						this.plugin.saveSettings();
+						this.render();
+					}
+				})
+			);
+		} else if (groupType === 'recent') {
+			menu.addItem(item =>
+				item.setTitle('Clear Recently Used').setIcon('x').setWarning(true).onClick(() => {
+					this.plugin.settings.recentlyUsed = [];
+					this.plugin.saveSettings();
+					this.render();
+				})
+			);
+		} else if (groupType === 'most-used') {
+			menu.addItem(item =>
+				item.setTitle('Clear Usage Statistics').setIcon('rotate-ccw').setWarning(true).onClick(() => {
+					if (confirm('Are you sure you want to clear all usage statistics?')) {
+						this.plugin.settings.commandUsageCount = {};
+						this.plugin.saveSettings();
+						this.render();
+					}
+				})
+			);
+		}
+		
 		menu.showAtMouseEvent(e);
 	}
 

@@ -289,7 +289,17 @@ export class CommandPanelModal extends Modal {
 		const header = groupEl.createDiv('group-header-minimal');
 		const iconSpan = header.createSpan('group-icon-minimal');
 		setIcon(iconSpan, 'clock');
-		header.createSpan({ text: 'Recently Used' });
+		const nameSpan = header.createSpan({ text: 'Recently Used' });
+		nameSpan.addClass('group-name-text');
+
+		// 更多菜单
+		const controls = header.createDiv('group-controls-minimal');
+		const moreBtn = controls.createSpan('group-more-btn-minimal');
+		setIcon(moreBtn, 'more-horizontal');
+		moreBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			this.showSpecialGroupMenu(e, 'recent');
+		});
 
 		// 命令网格
 		const commandsEl = groupEl.createDiv('command-grid-minimal');
@@ -309,15 +319,25 @@ export class CommandPanelModal extends Modal {
 		// 分组标题
 		const header = groupEl.createDiv('group-header-minimal');
 		const iconSpan = header.createSpan('group-icon-minimal');
-		setIcon(iconSpan, 'star');
-		header.createSpan({ text: 'Favorites' });
+		setIcon(iconSpan, 'heart');
+		const nameSpan = header.createSpan({ text: 'Favorites' });
+		nameSpan.addClass('group-name-text');
+
+		// 更多菜单
+		const controls = header.createDiv('group-controls-minimal');
+		const moreBtn = controls.createSpan('group-more-btn-minimal');
+		setIcon(moreBtn, 'more-horizontal');
+		moreBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			this.showSpecialGroupMenu(e, 'favorites');
+		});
 
 		// 命令网格
 		const commandsEl = groupEl.createDiv('command-grid-minimal');
 		commandsEl.style.setProperty('--grid-columns', this.plugin.settings.gridColumns.toString());
 
 		favorites.forEach(({ groupId, command }) => {
-			this.renderButton(commandsEl, command, groupId);
+			this.renderButton(commandsEl, command, 'favorites');
 		});
 	}
 
@@ -331,7 +351,17 @@ export class CommandPanelModal extends Modal {
 		const header = groupEl.createDiv('group-header-minimal');
 		const iconSpan = header.createSpan('group-icon-minimal');
 		setIcon(iconSpan, 'trending-up');
-		header.createSpan({ text: 'Most Used' });
+		const nameSpan = header.createSpan({ text: 'Most Used' });
+		nameSpan.addClass('group-name-text');
+
+		// 更多菜单
+		const controls = header.createDiv('group-controls-minimal');
+		const moreBtn = controls.createSpan('group-more-btn-minimal');
+		setIcon(moreBtn, 'more-horizontal');
+		moreBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			this.showSpecialGroupMenu(e, 'most-used');
+		});
 
 		// 命令网格
 		const commandsEl = groupEl.createDiv('command-grid-minimal');
@@ -343,17 +373,79 @@ export class CommandPanelModal extends Modal {
 		});
 	}
 
+	showSpecialGroupMenu(e: MouseEvent, groupType: 'favorites' | 'recent' | 'most-used') {
+		const { Menu } = require('obsidian');
+		const { Notice } = require('obsidian');
+		const menu = new Menu();
+		
+		if (groupType === 'favorites') {
+			menu.addItem((item: any) =>
+				item.setTitle('Clear All Favorites').setIcon('heart-off').setWarning(true).onClick(() => {
+					if (confirm('Are you sure you want to remove all favorites?')) {
+						this.plugin.settings.groups.forEach(group => {
+							group.commands.forEach(cmd => {
+								cmd.favorite = false;
+							});
+						});
+						this.plugin.saveSettings();
+						this.renderContent();
+					}
+				})
+			);
+		} else if (groupType === 'recent') {
+			menu.addItem((item: any) =>
+				item.setTitle('Clear Recently Used').setIcon('x').setWarning(true).onClick(() => {
+					this.plugin.settings.recentlyUsed = [];
+					this.plugin.saveSettings();
+					this.renderContent();
+					new Notice('Recently used cleared');
+				})
+			);
+		} else if (groupType === 'most-used') {
+			menu.addItem((item: any) =>
+				item.setTitle('Clear Usage Statistics').setIcon('rotate-ccw').setWarning(true).onClick(() => {
+					if (confirm('Are you sure you want to clear all usage statistics?')) {
+						this.plugin.settings.commandUsageCount = {};
+						this.plugin.saveSettings();
+						this.renderContent();
+						new Notice('Usage statistics cleared');
+					}
+				})
+			);
+		}
+		
+		menu.showAtMouseEvent(e);
+	}
+
 	renderGroup(container: HTMLElement, group: CommandGroup) {
 		const groupEl = container.createDiv('command-panel-group-minimal');
 
-		// 分组标题（带添加按钮）
+		// 分组标题（带折叠、添加、更多按钮）
 		const header = groupEl.createDiv('group-header-minimal');
+		
+		// 折叠按钮
+		const collapseBtn = header.createSpan('group-collapse-btn-minimal');
+		setIcon(collapseBtn, group.collapsed ? 'chevron-right' : 'chevron-down');
+		collapseBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			group.collapsed = !group.collapsed;
+			this.plugin.saveSettings();
+			this.renderContent();
+		});
+
+		// 图标
 		const iconSpan = header.createSpan('group-icon-minimal');
 		setIcon(iconSpan, group.icon || 'folder');
-		header.createSpan({ text: group.name });
+		
+		// 名称
+		const nameSpan = header.createSpan({ text: group.name });
+		nameSpan.addClass('group-name-text');
 
-		// 添加命令按钮（在标题右侧）
-		const addBtn = header.createSpan('group-add-btn-minimal');
+		// 右侧按钮组
+		const controls = header.createDiv('group-controls-minimal');
+
+		// 添加命令按钮
+		const addBtn = controls.createSpan('group-add-btn-minimal');
 		setIcon(addBtn, 'plus');
 		addBtn.setAttribute('aria-label', 'Add command to this group');
 		addBtn.addEventListener('click', (e) => {
@@ -361,15 +453,80 @@ export class CommandPanelModal extends Modal {
 			this.openAddCommandModal(group.id);
 		});
 
-		// 命令网格
-		const commandsEl = groupEl.createDiv('command-grid-minimal');
-		commandsEl.style.setProperty('--grid-columns', this.plugin.settings.gridColumns.toString());
+		// 更多菜单按钮
+		const moreBtn = controls.createSpan('group-more-btn-minimal');
+		setIcon(moreBtn, 'more-horizontal');
+		moreBtn.setAttribute('aria-label', 'Group options');
+		moreBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			this.showGroupMenu(e, group);
+		});
 
-		group.commands
-			.sort((a, b) => a.order - b.order)
-			.forEach(cmd => {
-				this.renderButton(commandsEl, cmd, group.id);
-			});
+		// 命令网格（只在未折叠时显示）
+		if (!group.collapsed) {
+			const commandsEl = groupEl.createDiv('command-grid-minimal');
+			commandsEl.style.setProperty('--grid-columns', this.plugin.settings.gridColumns.toString());
+
+			group.commands
+				.sort((a, b) => a.order - b.order)
+				.forEach(cmd => {
+					this.renderButton(commandsEl, cmd, group.id);
+				});
+		}
+	}
+
+	showGroupMenu(e: MouseEvent, group: CommandGroup) {
+		const { Menu } = require('obsidian');
+		const menu = new Menu();
+
+		menu.addItem((item: any) =>
+			item.setTitle('Rename').setIcon('pencil').onClick(() => {
+				const { AddGroupModal } = require('./AddGroupModal');
+				new AddGroupModal(this.app, (res: any) => {
+					this.plugin.updateGroup(group.id, res);
+					this.renderContent();
+				}, group).open();
+			})
+		);
+
+		menu.addItem((item: any) =>
+			item.setTitle('Change Icon').setIcon('image').onClick(() => {
+				const { AddGroupModal } = require('./AddGroupModal');
+				new AddGroupModal(this.app, (res: any) => {
+					this.plugin.updateGroup(group.id, res);
+					this.renderContent();
+				}, group).open();
+			})
+		);
+
+		menu.addSeparator();
+
+		menu.addItem((item: any) =>
+			item.setTitle('Move Up').setIcon('arrow-up').onClick(() => {
+				this.plugin.moveGroup(group.id, -1);
+				this.renderContent();
+			})
+		);
+
+		menu.addItem((item: any) =>
+			item.setTitle('Move Down').setIcon('arrow-down').onClick(() => {
+				this.plugin.moveGroup(group.id, 1);
+				this.renderContent();
+			})
+		);
+
+		menu.addSeparator();
+
+		menu.addItem((item: any) =>
+			item.setTitle('Delete').setIcon('trash').setWarning(true).onClick(() => {
+				if (confirm(`Delete group "${group.name}"?`)) {
+					this.plugin.deleteGroup(group.id);
+					this.renderContent();
+				}
+			})
+		);
+
+		menu.showAtMouseEvent(e);
 	}
 
 	openAddCommandModal(groupId: string) {
@@ -385,7 +542,7 @@ export class CommandPanelModal extends Modal {
 		// 收藏分组 - 取消收藏
 		if (groupId === 'favorites') {
 			menu.addItem(item =>
-				item.setTitle('Remove from Favorites').setIcon('star-off').onClick(() => {
+				item.setTitle('Remove from Favorites').setIcon('heart-off').onClick(() => {
 					const favorites = this.plugin.getFavoriteCommands();
 					const fav = favorites.find(f => f.command.commandId === cmdItem.commandId);
 					if (fav) {
@@ -419,7 +576,7 @@ export class CommandPanelModal extends Modal {
 			menu.addItem(item =>
 				item
 					.setTitle(cmdItem.favorite ? 'Remove from Favorites' : 'Add to Favorites')
-					.setIcon(cmdItem.favorite ? 'star-off' : 'star')
+					.setIcon(cmdItem.favorite ? 'heart-off' : 'heart')
 					.onClick(() => {
 						this.plugin.toggleFavorite(groupId, cmdItem.commandId);
 						this.renderContent();
@@ -436,6 +593,31 @@ export class CommandPanelModal extends Modal {
 					}).open();
 				})
 			);
+
+			menu.addSeparator();
+
+			// 移动到其他分组
+			menu.addItem(item => {
+				item.setTitle('Move to Group...').setIcon('folder-input');
+				const subMenu = (item as any).setSubmenu();
+
+				this.plugin.settings.groups.forEach(g => {
+					if (g.id === groupId) return;
+					subMenu.addItem((subItem: any) => {
+						subItem.setTitle(g.name)
+							.setIcon(g.icon || 'folder')
+							.onClick(async () => {
+								await this.plugin.moveCommand(
+									cmdItem.commandId,
+									groupId,
+									g.id,
+									g.commands.length
+								);
+								this.renderContent();
+							});
+					});
+				});
+			});
 
 			menu.addSeparator();
 
@@ -472,10 +654,10 @@ export class CommandPanelModal extends Modal {
 			btn.style.color = cmdItem.color;
 		}
 
-		// 收藏星标
+		// 收藏心形
 		if (cmdItem.favorite && groupId !== 'favorites') {
-			const star = btn.createDiv('cmd-star');
-			setIcon(star, 'star');
+			const heart = btn.createDiv('cmd-favorite');
+			setIcon(heart, 'heart');
 		}
 
 		// 图标
