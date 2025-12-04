@@ -2,6 +2,7 @@ import {Plugin, WorkspaceLeaf} from 'obsidian';
 import {CommandPanelSettings, DEFAULT_SETTINGS, VIEW_TYPE_COMMAND_PANEL, CommandGroup} from './types';
 import {CommandPanelView} from './views/CommandPanelView';
 import {CommandPanelSettingTab} from './settings';
+import {CommandPanelModal} from "./modals/CommandPanelModal";
 
 export default class CommandPanelPlugin extends Plugin {
 	settings: CommandPanelSettings;
@@ -25,6 +26,15 @@ export default class CommandPanelPlugin extends Plugin {
 			id: 'open-command-panel',
 			name: 'Open Command Panel',
 			callback: () => this.activateView(),
+		});
+
+		// 注册一个新命令，允许用户设置快捷键来打开这个弹窗
+		this.addCommand({
+			id: 'open-command-panel-popover',
+			name: 'Open Command Panel (Pop-up)',
+			callback: () => {
+				new CommandPanelModal(this.app, this).open();
+			},
 		});
 
 		// Settings Tab
