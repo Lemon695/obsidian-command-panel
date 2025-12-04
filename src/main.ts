@@ -155,6 +155,20 @@ export default class CommandPanelPlugin extends Plugin {
 		await this.saveSettings();
 	}
 
+	updateCommand(groupId: string, commandId: string, data: Partial<import('./types').CommandItem>) {
+		const group = this.settings.groups.find(g => g.id === groupId);
+		if (group) {
+			const command = group.commands.find(c => c.commandId === commandId);
+			if (command) {
+				// 更新属性
+				if (data.customName !== undefined) command.customName = data.customName;
+				if (data.customIcon !== undefined) command.customIcon = data.customIcon;
+
+				this.saveSettings();
+			}
+		}
+	}
+
 	addCommandToGroup(groupId: string, commandId: string) {
 		const group = this.settings.groups.find(g => g.id === groupId);
 		if (group) {

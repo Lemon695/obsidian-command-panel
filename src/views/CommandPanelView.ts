@@ -4,6 +4,7 @@ import {VIEW_TYPE_COMMAND_PANEL, CommandGroup, CommandItem, AppWithCommands} fro
 import {AddGroupModal} from '../modals/AddGroupModal';
 import {AddCommandModal} from '../modals/AddCommandModal';
 import {ICON_DEFAULT_COMMAND} from '../utils/constants';
+import {EditCommandModal} from "./EditCommandModal";
 
 interface DragData {
 	type: 'group' | 'command';
@@ -309,13 +310,16 @@ export class CommandPanelView extends ItemView {
 		if (!isReadOnly) {
 			btn.addEventListener('contextmenu', (e) => {
 				const menu = new Menu();
+				// 1. 编辑选项
 				menu.addItem(item =>
-					item.setTitle('Rename').setIcon('pencil').onClick(() => {
-						// Quick prompt for P0
-						// In P1 replace with EditCommandModal
-						// For now, simple rename
+					item.setTitle('Edit').setIcon('pencil').onClick(() => {
+						new EditCommandModal(this.app, cmdItem, (updates) => {
+							this.plugin.updateCommand(groupId, cmdItem.commandId, updates);
+							this.render();
+						}).open();
 					})
 				);
+
 				menu.addItem(item =>
 					item.setTitle('Remove').setIcon('trash').onClick(() => {
 						this.plugin.removeCommandFromGroup(groupId, cmdItem.commandId);
