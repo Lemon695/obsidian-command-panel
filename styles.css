@@ -1,8 +1,186 @@
-/*
+/* Container */
+.command-panel-container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	padding: 10px;
+	overflow-y: auto;
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+/* Search */
+.command-panel-search {
+	margin-bottom: 12px;
+}
+.command-panel-search-input {
+	width: 100%;
+}
 
-If your plugin does not need CSS, delete this file.
+/* Group */
+.command-panel-group {
+	margin-bottom: 15px;
+	background-color: var(--background-secondary);
+	border-radius: 6px;
+	border: 1px solid var(--background-modifier-border);
+	overflow: hidden;
+}
 
-*/
+.command-panel-group-header {
+	display: flex;
+	align-items: center;
+	padding: 8px 10px;
+	cursor: pointer;
+	font-weight: 600;
+	user-select: none;
+}
+.command-panel-group-header:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.command-panel-group-icon {
+	margin-right: 8px;
+	display: flex;
+	align-items: center;
+}
+.command-panel-group-name {
+	flex-grow: 1;
+}
+
+.command-panel-group-controls {
+	display: flex;
+	gap: 4px;
+	align-items: center;
+}
+.command-panel-group-collapse, .command-panel-group-more {
+	padding: 2px;
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+}
+.command-panel-group-collapse:hover, .command-panel-group-more:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+/* Commands Container */
+.command-panel-commands {
+	padding: 10px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Layout: Grid */
+.command-panel-commands.layout-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+}
+
+/* Layout: List */
+.command-panel-commands.layout-list {
+	display: flex;
+	flex-direction: column;
+}
+.command-panel-commands.layout-list .command-panel-button {
+	flex-direction: row;
+	height: auto;
+	padding: 8px;
+	justify-content: start;
+}
+.command-panel-commands.layout-list .command-panel-button-icon {
+	margin-bottom: 0;
+	margin-right: 10px;
+}
+
+/* Layout: Compact */
+.command-panel-commands.layout-compact .command-panel-button {
+	width: 36px;
+	height: 36px;
+	padding: 0;
+}
+
+/* Buttons */
+.command-panel-button {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	padding: 10px;
+	cursor: pointer;
+	text-align: center;
+	transition: all 0.2s ease;
+	position: relative;
+	min-height: 60px; /* For Grid */
+}
+.command-panel-button:hover {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.command-panel-button:active {
+	background-color: var(--background-modifier-active-hover);
+}
+
+.command-panel-button-icon {
+	margin-bottom: 5px;
+	color: var(--text-normal);
+}
+
+.command-panel-button-name {
+	font-size: 0.8em;
+	line-height: 1.2;
+	color: var(--text-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+.command-panel-button-hotkey {
+	position: absolute;
+	top: 2px;
+	right: 4px;
+	font-size: 0.6em;
+	color: var(--text-faint);
+	background-color: var(--background-modifier-cover);
+	padding: 1px 3px;
+	border-radius: 3px;
+}
+
+/* Add Buttons */
+.command-panel-add-group {
+	margin-top: 15px;
+	border: 2px dashed var(--background-modifier-border);
+	border-radius: 6px;
+	padding: 10px;
+	text-align: center;
+	cursor: pointer;
+	color: var(--text-muted);
+}
+.command-panel-add-group:hover {
+	border-color: var(--interactive-accent);
+	color: var(--text-normal);
+}
+
+.command-panel-add-command {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px dashed var(--background-modifier-border);
+	border-radius: 6px;
+	cursor: pointer;
+	min-height: 60px; /* Match grid height */
+	color: var(--text-muted);
+}
+.command-panel-add-command:hover {
+	border-color: var(--interactive-accent);
+	color: var(--interactive-accent);
+}
+
+/* Dragging */
+.command-panel-button.is-dragging {
+	opacity: 0.5;
+	border: 1px dashed var(--text-muted);
+}
