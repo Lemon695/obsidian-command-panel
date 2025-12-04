@@ -11,13 +11,16 @@ export interface AppWithCommands extends App {
 	// plugins: { ... }
 }
 
+// 命令项
 export interface CommandItem {
 	commandId: string;
 	customName?: string;
 	customIcon?: string;
 	order: number;
+	color?: string; // 支持 hex 颜色或 css 变量
 }
 
+// 分组
 export interface CommandGroup {
 	id: string;
 	name: string;
@@ -25,26 +28,32 @@ export interface CommandGroup {
 	collapsed: boolean;
 	order: number;
 	commands: CommandItem[];
+	context?: 'all' | 'editor' | 'markdown' | 'canvas'; // 可见性规则
 }
 
+// 插件设置
 export interface CommandPanelSettings {
-	// P0 & P1 Features
+	// 布局设置
 	layout: 'grid' | 'list' | 'compact';
 	gridColumns: number;
 	buttonSize: 'small' | 'medium' | 'large';
 
+	// 智能功能
 	showRecentlyUsed: boolean;
 	recentlyUsedLimit: number;
 	showMostUsed: boolean;
 	mostUsedLimit: number;
 	showHotkeys: boolean;
 	showTooltips: boolean;
-	groups: CommandGroup[];
-	recentlyUsed: string[]; // List of command IDs
-	commandUsageCount: Record<string, number>;
 	showExecuteNotice: boolean;
+
+	// 数据
+	groups: CommandGroup[];
+	recentlyUsed: string[]; // 最近使用的命令 ID 列表
+	commandUsageCount: Record<string, number>; // 命令使用统计
 }
 
+// 默认设置
 export const DEFAULT_SETTINGS: CommandPanelSettings = {
 	layout: 'grid',
 	gridColumns: 4,
@@ -56,31 +65,11 @@ export const DEFAULT_SETTINGS: CommandPanelSettings = {
 	mostUsedLimit: 20,
 	showHotkeys: true,
 	showTooltips: true,
+	showExecuteNotice: false,
+
 	groups: [],
 	recentlyUsed: [],
 	commandUsageCount: {},
-	showExecuteNotice: false,
 };
-
-// 1. 扩展命令项，支持颜色
-export interface CommandItem {
-	commandId: string;
-	customName?: string;
-	customIcon?: string;
-	order: number;
-	color?: string; // 新增：支持 hex 颜色或 css 变量
-}
-
-// 2. 扩展分组，支持上下文可见性
-export interface CommandGroup {
-	id: string;
-	name: string;
-	icon: string;
-	collapsed: boolean;
-	order: number;
-	commands: CommandItem[];
-	// 新增：可见性规则
-	context?: 'all' | 'editor' | 'markdown' | 'canvas';
-}
 
 export const VIEW_TYPE_COMMAND_PANEL = 'command-panel-view';

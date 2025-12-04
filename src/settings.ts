@@ -16,6 +16,9 @@ export class CommandPanelSettingTab extends PluginSettingTab {
 
 		containerEl.createEl('h2', {text: 'Command Panel Settings'});
 
+		// === Display Settings ===
+		containerEl.createEl('h3', {text: '📐 Display Settings'});
+
 		new Setting(containerEl)
 			.setName('Layout Style')
 			.setDesc('Choose how commands are displayed.')
@@ -28,6 +31,44 @@ export class CommandPanelSettingTab extends PluginSettingTab {
 					this.plugin.settings.layout = value as any;
 					await this.plugin.saveSettings();
 				}));
+
+		new Setting(containerEl)
+			.setName('Grid Columns')
+			.setDesc('Number of columns in grid layout (2-8).')
+			.addSlider(slider => slider
+				.setLimits(2, 8, 1)
+				.setValue(this.plugin.settings.gridColumns)
+				.setDynamicTooltip()
+				.onChange(async (value) => {
+					this.plugin.settings.gridColumns = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Button Size')
+			.setDesc('Size of command buttons.')
+			.addDropdown(dropdown => dropdown
+				.addOption('small', 'Small')
+				.addOption('medium', 'Medium')
+				.addOption('large', 'Large')
+				.setValue(this.plugin.settings.buttonSize)
+				.onChange(async (value) => {
+					this.plugin.settings.buttonSize = value as any;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Show Tooltips')
+			.setDesc('Display full command names on hover.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.showTooltips)
+				.onChange(async (value) => {
+					this.plugin.settings.showTooltips = value;
+					await this.plugin.saveSettings();
+				}));
+
+		// === Smart Features ===
+		containerEl.createEl('h3', {text: '📊 Smart Features'});
 
 		new Setting(containerEl)
 			.setName('Show Recently Used')
@@ -75,6 +116,7 @@ export class CommandPanelSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Show Hotkeys')
+			.setDesc('Display keyboard shortcuts on command buttons.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.showHotkeys)
 				.onChange(async (value) => {
@@ -82,8 +124,18 @@ export class CommandPanelSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
-		// --- Data Management Section ---
-		containerEl.createEl('h3', {text: 'Data Management'});
+		new Setting(containerEl)
+			.setName('Show Execution Notice')
+			.setDesc('Show a notification when a command is executed.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.showExecuteNotice ?? false)
+				.onChange(async (value) => {
+					this.plugin.settings.showExecuteNotice = value;
+					await this.plugin.saveSettings();
+				}));
+
+		// === Data Management ===
+		containerEl.createEl('h3', {text: '💾 Data Management'});
 
 		new Setting(containerEl)
 			.setName('Export Configuration')
@@ -125,12 +177,25 @@ export class CommandPanelSettingTab extends PluginSettingTab {
 					}
 				}));
 
-		// 危险操作：重置
+		new Setting(containerEl)
+			.setName('Clear Usage Statistics')
+			.setDesc('Reset all command usage counts.')
+			.addButton(btn => btn
+				.setButtonText('Clear Statistics')
+				.setWarning()
+				.onClick(async () => {
+					if (confirm('Are you sure you want to clear all usage statistics?')) {
+						this.plugin.settings.commandUsageCount = {};
+						await this.plugin.saveSettings();
+						new Notice('Usage statistics cleared.');
+					}
+				}));
+
 		new Setting(containerEl)
 			.setName('Reset to Defaults')
-			.setDesc('Clear all groups and restore default settings.')
+			.setDesc('⚠️ Clear all groups and restore default settings. This cannot be undone!')
 			.addButton(btn => btn
-				.setButtonText('Reset')
+				.setButtonText('Reset All')
 				.setWarning()
 				.onClick(async () => {
 					if (confirm('Are you sure you want to reset all data? This cannot be undone.')) {
@@ -139,31 +204,6 @@ export class CommandPanelSettingTab extends PluginSettingTab {
 						await this.plugin.activateView();
 						new Notice('Reset complete.');
 					}
-				}));
-
-		new Setting(containerEl)
-			.setName('Grid Columns')
-			.setDesc('Number of columns in grid layout (2-8).')
-			.addSlider(slider => slider
-				.setLimits(2, 8, 1)
-				.setValue(this.plugin.settings.gridColumns)
-				.setDynamicTooltip()
-				.onChange(async (value) => {
-					this.plugin.settings.gridColumns = value;
-					await this.plugin.saveSettings();
-					// 如果视图是打开的，可能需要刷新，或者让 CSS 变量响应式生效（需要在 render 中重新注入）
-					// 最简单的办法是用户下次打开或我们手动触发刷新
-					// this.plugin.refreshViews(); // 需要你自己实现一个简单的刷新方法
-				}));
-
-		new Setting(containerEl)
-			.setName('Show Execution Notice')
-			.setDesc('Show a notification when a command is executed.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.showExecuteNotice ?? false) // 默认 false
-				.onChange(async (value) => {
-					this.plugin.settings.showExecuteNotice = value;
-					await this.plugin.saveSettings();
 				}));
 	}
 }
