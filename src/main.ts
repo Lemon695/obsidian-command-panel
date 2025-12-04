@@ -16,19 +16,24 @@ export default class CommandPanelPlugin extends Plugin {
 			(leaf) => new CommandPanelView(leaf, this)
 		);
 
-		// Ribbon Icon
-		this.addRibbonIcon('layout-grid', 'Open Command Panel', () => {
+		// Ribbon Icon - 侧边栏
+		this.addRibbonIcon('layout-grid', 'Open Command Panel (Sidebar)', () => {
 			this.activateView();
 		});
 
-		// Command to open
+		// Ribbon Icon - 弹窗
+		this.addRibbonIcon('zap', 'Open Command Panel (Pop-up)', () => {
+			new CommandPanelModal(this.app, this).open();
+		});
+
+		// Command to open sidebar
 		this.addCommand({
 			id: 'open-command-panel',
-			name: 'Open Command Panel',
+			name: 'Open Command Panel (Sidebar)',
 			callback: () => this.activateView(),
 		});
 
-		// 注册一个新命令，允许用户设置快捷键来打开这个弹窗
+		// Command to open popup
 		this.addCommand({
 			id: 'open-command-panel-popover',
 			name: 'Open Command Panel (Pop-up)',
