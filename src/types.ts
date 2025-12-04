@@ -18,6 +18,7 @@ export interface CommandItem {
 	customIcon?: string;
 	order: number;
 	color?: string; // 支持 hex 颜色或 css 变量
+	favorite?: boolean; // 收藏标记
 }
 
 // 分组
@@ -43,6 +44,7 @@ export interface CommandPanelSettings {
 	recentlyUsedLimit: number;
 	showMostUsed: boolean;
 	mostUsedLimit: number;
+	showFavorites: boolean;
 	showHotkeys: boolean;
 	showTooltips: boolean;
 	showExecuteNotice: boolean;
@@ -63,6 +65,7 @@ export const DEFAULT_SETTINGS: CommandPanelSettings = {
 	recentlyUsedLimit: 20,
 	showMostUsed: true,
 	mostUsedLimit: 20,
+	showFavorites: true,
 	showHotkeys: true,
 	showTooltips: true,
 	showExecuteNotice: false,

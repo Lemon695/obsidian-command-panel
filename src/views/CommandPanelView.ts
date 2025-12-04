@@ -112,6 +112,11 @@ export class CommandPanelView extends ItemView {
 				return true;
 			});
 
+		// Render "Favorites"
+		if (this.plugin.settings.showFavorites && !this.searchQuery) {
+			this.renderFavorites(groupsContainer);
+		}
+
 		// Render "Recently Used"
 		if (this.plugin.settings.showRecentlyUsed && !this.searchQuery) {
 			this.renderRecentlyUsed(groupsContainer);
@@ -174,6 +179,23 @@ export class CommandPanelView extends ItemView {
 
 		recentIds.forEach(id => {
 			this.renderCommandButton(commandsDiv, {commandId: id, order: 0}, 'recent', true);
+		});
+	}
+
+	renderFavorites(container: HTMLElement) {
+		const favorites = this.plugin.getFavoriteCommands();
+		if (favorites.length === 0) return;
+
+		const groupDiv = container.createDiv('command-panel-group');
+		const header = groupDiv.createDiv('command-panel-group-header');
+		setIcon(header.createSpan('command-panel-group-icon'), 'star');
+		header.createSpan({text: 'Favorites', cls: 'command-panel-group-name'});
+
+		const commandsDiv = groupDiv.createDiv('command-panel-commands');
+		commandsDiv.addClass(`layout-${this.plugin.settings.layout}`);
+
+		favorites.forEach(({ groupId, command }) => {
+			this.renderCommandButton(commandsDiv, command, groupId, true);
 		});
 	}
 
@@ -346,6 +368,12 @@ export class CommandPanelView extends ItemView {
 			container.addClass(`button-size-${this.plugin.settings.buttonSize}`);
 		}
 
+		// Favorite Star
+		if (cmdItem.favorite && groupId !== 'favorites') {
+			const star = btn.createDiv('command-panel-button-star');
+			setIcon(star, 'star');
+		}
+
 		// Icon
 		const iconDiv = btn.createDiv('command-panel-button-icon');
 		setIcon(iconDiv, cmdItem.customIcon || realCommand.icon || ICON_DEFAULT_COMMAND);
@@ -392,7 +420,24 @@ export class CommandPanelView extends ItemView {
 		btn.addEventListener('contextmenu', (e) => {
 			const menu = new Menu();
 
-			// 特殊处理：最近使用和最多使用
+			// 特殊处理：收藏、最近使用和最多使用
+			if (groupId === 'favorites') {
+				// 收藏分组中的命令可以取消收藏
+				menu.addItem(item =>
+					item.setTitle('Remove from Favorites').setIcon('star-off').onClick(() => {
+						// 找到原始分组并取消收藏
+						const favorites = this.plugin.getFavoriteCommands();
+						const fav = favorites.find(f => f.command.commandId === cmdItem.commandId);
+						if (fav) {
+							this.plugin.toggleFavorite(fav.groupId, cmdItem.commandId);
+							this.render();
+						}
+					})
+				);
+				menu.showAtMouseEvent(e);
+				return;
+			}
+
 			if (groupId === 'recent') {
 				menu.addItem(item =>
 					item.setTitle('Remove from Recently Used').setIcon('x').onClick(() => {
@@ -417,6 +462,19 @@ export class CommandPanelView extends ItemView {
 
 			// 普通命令的右键菜单
 			if (!isReadOnly) {
+
+				// 0. 收藏/取消收藏
+				menu.addItem(item =>
+					item
+						.setTitle(cmdItem.favorite ? 'Remove from Favorites' : 'Add to Favorites')
+						.setIcon(cmdItem.favorite ? 'star-off' : 'star')
+						.onClick(() => {
+							this.plugin.toggleFavorite(groupId, cmdItem.commandId);
+							this.render();
+						})
+				);
+
+				menu.addSeparator();
 
 				// 1. 编辑 (Edit)
 				menu.addItem(item =>

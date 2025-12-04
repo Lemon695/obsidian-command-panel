@@ -71,8 +71,18 @@ export class CommandPanelSettingTab extends PluginSettingTab {
 		containerEl.createEl('h3', {text: '📊 Smart Features'});
 
 		new Setting(containerEl)
+			.setName('Show Favorites')
+			.setDesc('Display your favorite commands at the top.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.showFavorites)
+				.onChange(async (value) => {
+					this.plugin.settings.showFavorites = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
 			.setName('Show Recently Used')
-			.setDesc('Display recently executed commands at the top.')
+			.setDesc('Display recently executed commands.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.showRecentlyUsed)
 				.onChange(async (value) => {

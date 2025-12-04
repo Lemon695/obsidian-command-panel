@@ -233,4 +233,28 @@ export default class CommandPanelPlugin extends Plugin {
 		delete this.settings.commandUsageCount[commandId];
 		this.saveSettings();
 	}
+
+	// 收藏功能
+	toggleFavorite(groupId: string, commandId: string) {
+		const group = this.settings.groups.find(g => g.id === groupId);
+		if (group) {
+			const command = group.commands.find(c => c.commandId === commandId);
+			if (command) {
+				command.favorite = !command.favorite;
+				this.saveSettings();
+			}
+		}
+	}
+
+	getFavoriteCommands(): Array<{ groupId: string; command: import('./types').CommandItem }> {
+		const favorites: Array<{ groupId: string; command: import('./types').CommandItem }> = [];
+		this.settings.groups.forEach(group => {
+			group.commands.forEach(cmd => {
+				if (cmd.favorite) {
+					favorites.push({ groupId: group.id, command: cmd });
+				}
+			});
+		});
+		return favorites;
+	}
 }

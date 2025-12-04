@@ -47,6 +47,21 @@ export class AddGroupModal extends Modal {
 			);
 
 		new Setting(contentEl)
+			.setName('Context Visibility')
+			.setDesc('When should this group be visible?')
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption('all', 'Always visible')
+					.addOption('editor', 'Editor mode only')
+					.addOption('markdown', 'Markdown files only')
+					.addOption('canvas', 'Canvas view only')
+					.setValue(this.result.context || 'all')
+					.onChange((value) => {
+						this.result.context = value as any;
+					})
+			);
+
+		new Setting(contentEl)
 			.addButton((btn) =>
 				btn
 					.setButtonText(this.isEditing ? 'Save' : 'Create')

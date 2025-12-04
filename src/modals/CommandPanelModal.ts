@@ -105,6 +105,11 @@ export class CommandPanelModal extends Modal {
 
 		const app = this.app as AppWithCommands;
 
+		// 收藏分组
+		if (this.plugin.settings.showFavorites && !this.searchQuery) {
+			this.renderFavorites(this.contentContainerEl);
+		}
+
 		// 最近使用分组
 		if (this.plugin.settings.showRecentlyUsed && !this.searchQuery) {
 			this.renderRecentlyUsed(this.contentContainerEl);
@@ -174,6 +179,27 @@ export class CommandPanelModal extends Modal {
 		});
 	}
 
+	renderFavorites(container: HTMLElement) {
+		const favorites = this.plugin.getFavoriteCommands();
+		if (favorites.length === 0) return;
+
+		const groupEl = container.createDiv('command-panel-group-minimal');
+
+		// 分组标题
+		const header = groupEl.createDiv('group-header-minimal');
+		const iconSpan = header.createSpan('group-icon-minimal');
+		setIcon(iconSpan, 'star');
+		header.createSpan({ text: 'Favorites' });
+
+		// 命令网格
+		const commandsEl = groupEl.createDiv('command-grid-minimal');
+		commandsEl.style.setProperty('--grid-columns', this.plugin.settings.gridColumns.toString());
+
+		favorites.forEach(({ groupId, command }) => {
+			this.renderButton(commandsEl, command, groupId);
+		});
+	}
+
 	renderMostUsed(container: HTMLElement) {
 		const mostUsedIds = this.plugin.getMostUsedCommands();
 		if (mostUsedIds.length === 0) return;
@@ -235,8 +261,21 @@ export class CommandPanelModal extends Modal {
 	showCommandContextMenu(e: MouseEvent, cmdItem: CommandItem, groupId: string) {
 		const menu = new Menu();
 
+		// 收藏分组 - 取消收藏
+		if (groupId === 'favorites') {
+			menu.addItem(item =>
+				item.setTitle('Remove from Favorites').setIcon('star-off').onClick(() => {
+					const favorites = this.plugin.getFavoriteCommands();
+					const fav = favorites.find(f => f.command.commandId === cmdItem.commandId);
+					if (fav) {
+						this.plugin.toggleFavorite(fav.groupId, cmdItem.commandId);
+						this.renderContent();
+					}
+				})
+			);
+		}
 		// 最近使用 - 移除
-		if (groupId === 'recent') {
+		else if (groupId === 'recent') {
 			menu.addItem(item =>
 				item.setTitle('Remove from Recently Used').setIcon('x').onClick(() => {
 					this.plugin.removeFromRecent(cmdItem.commandId);
@@ -255,6 +294,19 @@ export class CommandPanelModal extends Modal {
 		}
 		// 普通分组 - 完整菜单
 		else if (groupId) {
+			// 收藏/取消收藏
+			menu.addItem(item =>
+				item
+					.setTitle(cmdItem.favorite ? 'Remove from Favorites' : 'Add to Favorites')
+					.setIcon(cmdItem.favorite ? 'star-off' : 'star')
+					.onClick(() => {
+						this.plugin.toggleFavorite(groupId, cmdItem.commandId);
+						this.renderContent();
+					})
+			);
+
+			menu.addSeparator();
+
 			menu.addItem(item =>
 				item.setTitle('Edit').setIcon('pencil').onClick(() => {
 					new EditCommandModal(this.app, cmdItem, (updates) => {
@@ -297,6 +349,12 @@ export class CommandPanelModal extends Modal {
 			btn.addClass('is-colored');
 			btn.style.borderColor = cmdItem.color;
 			btn.style.color = cmdItem.color;
+		}
+
+		// 收藏星标
+		if (cmdItem.favorite && groupId !== 'favorites') {
+			const star = btn.createDiv('cmd-star');
+			setIcon(star, 'star');
 		}
 
 		// 图标
