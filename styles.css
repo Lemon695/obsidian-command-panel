@@ -216,4 +216,25 @@
 }
 
 
+.command-panel-button.is-colored {
+	/* 默认状态：使用定义的颜色 */
+	color: var(--btn-color);
+	border-color: var(--btn-color);
+	background-color: transparent;
+}
+
+.command-panel-button.is-colored .command-panel-button-icon {
+	color: var(--btn-color);
+}
+
+.command-panel-button.is-colored:hover {
+	/* 悬停时：背景变色 */
+	background-color: var(--btn-color);
+	color: var(--text-on-accent); /* 确保文字反白 */
+}
+
+.command-panel-button.is-colored:hover .command-panel-button-icon {
+	color: var(--text-on-accent);
+}
+
 

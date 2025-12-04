@@ -120,5 +120,15 @@ export class CommandPanelSettingTab extends PluginSettingTab {
 					// 最简单的办法是用户下次打开或我们手动触发刷新
 					// this.plugin.refreshViews(); // 需要你自己实现一个简单的刷新方法
 				}));
+
+		new Setting(containerEl)
+			.setName('Show Execution Notice')
+			.setDesc('Show a notification when a command is executed.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.showExecuteNotice ?? false) // 默认 false
+				.onChange(async (value) => {
+					this.plugin.settings.showExecuteNotice = value;
+					await this.plugin.saveSettings();
+				}));
 	}
 }

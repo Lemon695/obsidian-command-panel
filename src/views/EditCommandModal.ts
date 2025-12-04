@@ -47,6 +47,26 @@ export class EditCommandModal extends Modal {
 					})
 			);
 
+		// 颜色选择器
+		new Setting(this.contentEl)
+			.setName('Button Color')
+			.setDesc('Pick a highlight color for this button')
+			.addColorPicker(color => color
+				.setValue(this.result.color || '#000000')
+				.onChange(value => {
+					this.result.color = value;
+				})
+			)
+			// 添加一个清除颜色的按钮
+			.addExtraButton(btn => btn
+				.setIcon('x')
+				.setTooltip('Clear color')
+				.onClick(() => {
+					this.result.color = undefined;
+					// 强制刷新一下 UI 显示（可选）
+				})
+			);
+
 		// 按钮
 		new Setting(contentEl)
 			.addButton((btn) =>

@@ -1,4 +1,4 @@
-import {ItemView, WorkspaceLeaf, Menu, Notice, setIcon, Platform} from 'obsidian';
+import {ItemView, WorkspaceLeaf, Menu, Notice, setIcon, Platform, View} from 'obsidian';
 import CommandPanelPlugin from '../main';
 import {VIEW_TYPE_COMMAND_PANEL, CommandGroup, CommandItem, AppWithCommands} from '../types';
 import {AddGroupModal} from '../modals/AddGroupModal';
@@ -33,8 +33,24 @@ export class CommandPanelView extends ItemView {
 		return 'layout-grid';
 	}
 
+	// 1. 添加监听器
 	async onOpen() {
 		this.render();
+
+		// 监听视图变化，触发重绘
+		this.registerEvent(
+			this.app.workspace.on('active-leaf-change', () => {
+				// 防抖，避免频繁刷新
+				this.render();
+			})
+		);
+
+		// 监听布局变化（例如切换编辑/阅读模式）
+		this.registerEvent(
+			this.app.workspace.on('layout-change', () => {
+				this.render();
+			})
+		);
 	}
 
 	// --- Rendering ---
@@ -55,8 +71,27 @@ export class CommandPanelView extends ItemView {
 		// 2. Groups Container
 		const groupsContainer = container.createDiv('command-panel-groups');
 
+		// 获取当前上下文
+		const activeView = this.app.workspace.getActiveViewOfType(View);
+		const viewType = activeView?.getViewType(); // 'markdown', 'canvas', etc.
+		// @ts-ignore - 检查是否在编辑模式 (source)
+		const isEditing = activeView?.getMode ? activeView.getMode() === 'source' : false;
+
 		// Filter Logic
 		const groupsToRender = this.plugin.settings.groups
+			.filter(group => {
+				// 如果正在搜索，忽略上下文规则，显示所有匹配项
+				if (this.searchQuery) return true;
+
+				const context = group.context || 'all';
+
+				if (context === 'all') return true;
+				if (context === 'canvas' && viewType === 'canvas') return true;
+				if (context === 'markdown' && viewType === 'markdown') return true;
+				if (context === 'editor' && viewType === 'markdown' && isEditing) return true;
+
+				return false; // 不符合当前上下文，隐藏
+			})
 			.sort((a, b) => a.order - b.order)
 			.map(group => {
 				// If searching, filter commands inside group
@@ -268,6 +303,21 @@ export class CommandPanelView extends ItemView {
 		}
 
 		const btn = container.createDiv('command-panel-button');
+
+		// --- 应用颜色 ---
+		if (cmdItem.color) {
+			// 我们设置一个 CSS 变量，方便 CSS 处理 hover 效果
+			btn.style.setProperty('--btn-color', cmdItem.color);
+			btn.addClass('is-colored');
+
+			// 简单样式：边框和图标变色
+			btn.style.borderColor = cmdItem.color;
+			btn.style.color = cmdItem.color;
+
+			// 如果想要背景色淡淡的效果：
+			// btn.style.backgroundColor = `${cmdItem.color}15`; // 15 是透明度
+		}
+
 		// Basic Layout Styling
 		if (this.plugin.settings.buttonSize) {
 			container.addClass(`button-size-${this.plugin.settings.buttonSize}`);
@@ -313,7 +363,8 @@ export class CommandPanelView extends ItemView {
 		if (!isReadOnly) {
 			btn.addEventListener('contextmenu', (e) => {
 				const menu = new Menu();
-				// 1. 编辑选项
+
+				// 1. 编辑 (Edit)
 				menu.addItem(item =>
 					item.setTitle('Edit').setIcon('pencil').onClick(() => {
 						new EditCommandModal(this.app, cmdItem, (updates) => {
@@ -323,15 +374,78 @@ export class CommandPanelView extends ItemView {
 					})
 				);
 
+				menu.addSeparator();
+
+				// 2. 移动到其他分组 (Move to Group) - 解决长列表拖拽难的问题
+				menu.addItem(item => {
+					item.setTitle('Move to Group...').setIcon('folder-input');
+					// 创建子菜单逻辑 (Obsidian API 未直接提供子菜单 UI，通常用 Modal 或扁平化处理)
+					// 这里我们使用一种巧妙的方法：点击后弹出一个小的建议列表，或者直接列出
+
+					// 由于 Obsidian Menu API 的限制，通常直接列出分组比较长。
+					// 简单的做法是：
+					const subMenu = (item as any).setSubmenu(); // 注意：setSubmenu 是较新 API，需确保 types 匹配
+
+					this.plugin.settings.groups.forEach(g => {
+						if (g.id === groupId) return; // 跳过当前组
+						subMenu.addItem((subItem: any) => {
+							subItem.setTitle(g.name)
+								.setIcon(g.icon || 'folder')
+								.onClick(async () => {
+									await this.plugin.moveCommand(
+										cmdItem.commandId,
+										groupId,
+										g.id,
+										g.commands.length // 移动到末尾
+									);
+									this.render();
+								});
+						});
+					});
+				});
+
+				menu.addSeparator();
+
+				// 3. 复制 ID (Copy ID)
 				menu.addItem(item =>
-					item.setTitle('Remove').setIcon('trash').onClick(() => {
+					item.setTitle('Copy Command ID').setIcon('copy').onClick(() => {
+						navigator.clipboard.writeText(cmdItem.commandId);
+						new Notice('Command ID copied to clipboard');
+					})
+				);
+
+				// 4. 移除 (Remove)
+				menu.addItem(item =>
+					item.setTitle('Remove').setIcon('trash').setWarning(true).onClick(() => {
 						this.plugin.removeCommandFromGroup(groupId, cmdItem.commandId);
 						this.render();
 					})
 				);
+
 				menu.showAtMouseEvent(e);
 			});
 		}
+
+		// Click -> Execute (增加执行反馈)
+		btn.addEventListener('click', () => {
+			const success = app.commands.executeCommandById(cmdItem.commandId);
+
+			if (success) {
+				this.plugin.addToRecent(cmdItem.commandId);
+
+				// 增加统计计数 (P2 功能)
+				const count = this.plugin.settings.commandUsageCount[cmdItem.commandId] || 0;
+				this.plugin.settings.commandUsageCount[cmdItem.commandId] = count + 1;
+				this.plugin.saveSettings();
+
+				// 执行反馈通知 (P0/P1 功能)
+				if (this.plugin.settings.showExecuteNotice) { // 需确保 settings.ts 里有这个开关
+					new Notice(`Executed: ${cmdItem.customName || realCommand.name}`);
+				}
+			} else {
+				new Notice(`Failed to execute command. Is the plugin enabled?`);
+			}
+		});
 
 		// Drag and Drop (Basic HTML5 implementation for P0)
 		if (!isReadOnly && !this.searchQuery) {

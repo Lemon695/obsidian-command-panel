@@ -163,6 +163,7 @@ export default class CommandPanelPlugin extends Plugin {
 				// 更新属性
 				if (data.customName !== undefined) command.customName = data.customName;
 				if (data.customIcon !== undefined) command.customIcon = data.customIcon;
+				if (data.color !== undefined) command.color = data.color;
 
 				this.saveSettings();
 			}
