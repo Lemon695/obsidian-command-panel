@@ -257,4 +257,27 @@ export default class CommandPanelPlugin extends Plugin {
 		});
 		return favorites;
 	}
+
+	// 搜索历史
+	addToSearchHistory(query: string) {
+		if (!query || query.length < 2) return;
+		
+		// 移除已存在的
+		this.settings.searchHistory = this.settings.searchHistory.filter(q => q !== query);
+		
+		// 添加到开头
+		this.settings.searchHistory.unshift(query);
+		
+		// 限制数量
+		if (this.settings.searchHistory.length > 10) {
+			this.settings.searchHistory = this.settings.searchHistory.slice(0, 10);
+		}
+		
+		this.saveSettings();
+	}
+
+	clearSearchHistory() {
+		this.settings.searchHistory = [];
+		this.saveSettings();
+	}
 }

@@ -138,9 +138,17 @@ A powerful visual command panel plugin for Obsidian that helps you organize and 
 
 ### Keyboard Shortcuts
 
-Set custom hotkeys for:
+**Set custom hotkeys for:**
 - `Command Panel: Open (Sidebar)` - Open sidebar panel
 - `Command Panel: Open (Pop-up)` - Open popup modal
+
+**Keyboard Navigation (in Pop-up):**
+- `↑` / `↓` or `j` / `k` - Navigate up/down
+- `←` / `→` or `h` / `l` - Navigate left/right
+- `Enter` - Execute selected command
+- `/` - Focus search box
+- `ESC` - Clear search or close modal
+- `Shift + Click` - Execute and keep modal open
 
 ## ⚙️ Settings
 

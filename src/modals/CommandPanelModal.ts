@@ -10,6 +10,9 @@ export class CommandPanelModal extends Modal {
 	searchQuery: string = '';
 	searchInputEl: HTMLInputElement | null = null;
 	contentContainerEl: HTMLElement | null = null;
+	selectedIndex: number = -1;
+	commandButtons: HTMLElement[] = [];
+	searchDebounceTimer: number | null = null;
 
 	constructor(app: App, plugin: CommandPanelPlugin) {
 		super(app);
@@ -33,10 +36,113 @@ export class CommandPanelModal extends Modal {
 		}
 		
 		this.render();
+		
 		// 自动聚焦搜索框
 		setTimeout(() => {
 			this.searchInputEl?.focus();
 		}, 50);
+
+		// 键盘导航
+		this.setupKeyboardNavigation();
+	}
+
+	setupKeyboardNavigation() {
+		this.contentEl.addEventListener('keydown', (e) => {
+			// 如果在搜索框中，只处理特定按键
+			if (document.activeElement === this.searchInputEl) {
+				if (e.key === 'ArrowDown') {
+					e.preventDefault();
+					this.selectNext();
+				} else if (e.key === 'ArrowUp') {
+					e.preventDefault();
+					this.selectPrevious();
+				} else if (e.key === 'Enter' && this.selectedIndex >= 0) {
+					e.preventDefault();
+					this.executeSelected();
+				}
+				return;
+			}
+
+			// 全局键盘导航
+			switch (e.key) {
+				case 'ArrowDown':
+				case 'j':
+					e.preventDefault();
+					this.selectNext();
+					break;
+				case 'ArrowUp':
+				case 'k':
+					e.preventDefault();
+					this.selectPrevious();
+					break;
+				case 'ArrowRight':
+				case 'l':
+					e.preventDefault();
+					this.selectNextInRow();
+					break;
+				case 'ArrowLeft':
+				case 'h':
+					e.preventDefault();
+					this.selectPreviousInRow();
+					break;
+				case 'Enter':
+					e.preventDefault();
+					this.executeSelected();
+					break;
+				case '/':
+					e.preventDefault();
+					this.searchInputEl?.focus();
+					break;
+			}
+		});
+	}
+
+	selectNext() {
+		if (this.commandButtons.length === 0) return;
+		this.selectedIndex = (this.selectedIndex + 1) % this.commandButtons.length;
+		this.updateSelection();
+	}
+
+	selectPrevious() {
+		if (this.commandButtons.length === 0) return;
+		this.selectedIndex = this.selectedIndex <= 0 
+			? this.commandButtons.length - 1 
+			: this.selectedIndex - 1;
+		this.updateSelection();
+	}
+
+	selectNextInRow() {
+		if (this.commandButtons.length === 0) return;
+		const cols = this.plugin.settings.gridColumns;
+		this.selectedIndex = Math.min(
+			this.selectedIndex + 1,
+			this.commandButtons.length - 1
+		);
+		this.updateSelection();
+	}
+
+	selectPreviousInRow() {
+		if (this.commandButtons.length === 0) return;
+		this.selectedIndex = Math.max(this.selectedIndex - 1, 0);
+		this.updateSelection();
+	}
+
+	updateSelection() {
+		// 移除所有选中状态
+		this.commandButtons.forEach(btn => btn.removeClass('keyboard-selected'));
+		
+		// 添加选中状态
+		if (this.selectedIndex >= 0 && this.selectedIndex < this.commandButtons.length) {
+			const selected = this.commandButtons[this.selectedIndex];
+			selected.addClass('keyboard-selected');
+			selected.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+		}
+	}
+
+	executeSelected() {
+		if (this.selectedIndex >= 0 && this.selectedIndex < this.commandButtons.length) {
+			this.commandButtons[this.selectedIndex].click();
+		}
 	}
 
 	onClose() {
@@ -54,7 +160,7 @@ export class CommandPanelModal extends Modal {
 		
 		// 提示文字
 		const hint = titleBar.createDiv('command-panel-modal-hint');
-		hint.setText('Hold Shift to keep panel open');
+		hint.setText('↑↓ Navigate • Enter Execute • / Search • Shift Keep Open');
 
 		// 搜索框
 		this.renderSearchBar(contentEl);
@@ -77,8 +183,21 @@ export class CommandPanelModal extends Modal {
 
 		// 使用 input 事件，只更新内容区域，不重新渲染整个面板
 		this.searchInputEl.addEventListener('input', (e) => {
-			this.searchQuery = (e.target as HTMLInputElement).value;
-			this.renderContent(); // 只更新内容区域
+			const value = (e.target as HTMLInputElement).value;
+			this.searchQuery = value;
+			
+			// 防抖优化
+			if (this.searchDebounceTimer) {
+				window.clearTimeout(this.searchDebounceTimer);
+			}
+			
+			this.searchDebounceTimer = window.setTimeout(() => {
+				this.renderContent();
+				// 记录搜索历史（当用户停止输入时）
+				if (value.length >= 2) {
+					this.plugin.addToSearchHistory(value);
+				}
+			}, 150);
 		});
 
 		// ESC 键清空搜索或关闭弹窗
@@ -102,6 +221,8 @@ export class CommandPanelModal extends Modal {
 		if (!this.contentContainerEl) return;
 		
 		this.contentContainerEl.empty();
+		this.commandButtons = [];
+		this.selectedIndex = -1;
 
 		const app = this.app as AppWithCommands;
 
@@ -417,6 +538,9 @@ export class CommandPanelModal extends Modal {
 				new Notice('Failed to execute command');
 			}
 		});
+
+		// 收集按钮用于键盘导航
+		this.commandButtons.push(btn);
 	}
 
 	getHotkeyText(commandId: string): string | null {

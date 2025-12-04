@@ -543,6 +543,43 @@
 	filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
 }
 
+/* 键盘导航选中状态 */
+.command-btn-minimal.keyboard-selected {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
+	box-shadow: 0 0 0 4px var(--interactive-accent-hover);
+	transform: scale(1.05);
+	z-index: 10;
+}
+
+/* 空状态 */
+.command-panel-empty-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 60px 20px;
+	text-align: center;
+	color: var(--text-muted);
+}
+
+.command-panel-empty-state .empty-state-icon {
+	font-size: 64px;
+	opacity: 0.3;
+	margin-bottom: 16px;
+}
+
+.command-panel-empty-state h3 {
+	margin: 0 0 8px 0;
+	font-size: 1.2em;
+	color: var(--text-normal);
+}
+
+.command-panel-empty-state p {
+	margin: 0;
+	font-size: 0.9em;
+}
+
 /* Colored Buttons */
 .command-btn-minimal.is-colored {
 	color: var(--btn-color);

@@ -1,4 +1,4 @@
-import {ItemView, WorkspaceLeaf, Menu, Notice, setIcon, Platform, View} from 'obsidian';
+import {ItemView, WorkspaceLeaf, Menu, Notice, setIcon, Platform, View, Command} from 'obsidian';
 import CommandPanelPlugin from '../main';
 import {VIEW_TYPE_COMMAND_PANEL, CommandGroup, CommandItem, AppWithCommands} from '../types';
 import {AddGroupModal} from '../modals/AddGroupModal';
@@ -15,6 +15,8 @@ interface DragData {
 export class CommandPanelView extends ItemView {
 	plugin: CommandPanelPlugin;
 	searchQuery: string = '';
+	commandCache: Map<string, Command> = new Map();
+	searchDebounceTimer: number | null = null;
 
 	constructor(leaf: WorkspaceLeaf, plugin: CommandPanelPlugin) {
 		super(leaf);
@@ -132,6 +134,15 @@ export class CommandPanelView extends ItemView {
 			this.renderGroup(groupsContainer, group);
 		});
 
+		// 空状态提示
+		if (groupsToRender.length === 0 && !this.plugin.settings.showRecentlyUsed && !this.plugin.settings.showMostUsed && !this.plugin.settings.showFavorites) {
+			const emptyState = groupsContainer.createDiv('command-panel-empty-state');
+			const iconDiv = emptyState.createDiv('empty-state-icon');
+			setIcon(iconDiv, 'inbox');
+			emptyState.createEl('h3', { text: 'No Groups Yet' });
+			emptyState.createEl('p', { text: 'Create your first group to organize commands' });
+		}
+
 		// 3. Add Group Button
 		const addGroupBtn = container.createDiv('command-panel-add-group');
 		setIcon(addGroupBtn.createSpan(), 'plus');
@@ -148,20 +159,34 @@ export class CommandPanelView extends ItemView {
 		const searchDiv = container.createDiv('command-panel-search');
 		const input = searchDiv.createEl('input', {
 			type: 'text',
-			placeholder: 'Search commands...',
+			placeholder: 'Search commands... (Press / to focus)',
 			cls: 'command-panel-search-input'
 		});
 		input.value = this.searchQuery;
 
 		input.addEventListener('input', (e) => {
-			this.searchQuery = (e.target as HTMLInputElement).value;
-			this.render(); // Re-render on input
-			// Re-focus input after render
-			const newInput = this.contentEl.querySelector('.command-panel-search-input') as HTMLInputElement;
-			if (newInput) {
-				newInput.focus();
-				newInput.setSelectionRange(newInput.value.length, newInput.value.length);
+			const value = (e.target as HTMLInputElement).value;
+			this.searchQuery = value;
+			
+			// 防抖优化
+			if (this.searchDebounceTimer) {
+				window.clearTimeout(this.searchDebounceTimer);
 			}
+			
+			this.searchDebounceTimer = window.setTimeout(() => {
+				this.render();
+				// Re-focus input after render
+				const newInput = this.contentEl.querySelector('.command-panel-search-input') as HTMLInputElement;
+				if (newInput) {
+					newInput.focus();
+					newInput.setSelectionRange(newInput.value.length, newInput.value.length);
+				}
+				
+				// 记录搜索历史
+				if (value.length >= 2) {
+					this.plugin.addToSearchHistory(value);
+				}
+			}, 150);
 		});
 	}
 
@@ -338,7 +363,15 @@ export class CommandPanelView extends ItemView {
 
 	renderCommandButton(container: HTMLElement, cmdItem: CommandItem, groupId: string, isReadOnly = false, usageCount?: number) {
 		const app = this.app as AppWithCommands;
-		const realCommand = app.commands.findCommand(cmdItem.commandId);
+		
+		// 使用缓存优化性能
+		let realCommand = this.commandCache.get(cmdItem.commandId);
+		if (!realCommand) {
+			realCommand = app.commands.findCommand(cmdItem.commandId);
+			if (realCommand) {
+				this.commandCache.set(cmdItem.commandId, realCommand);
+			}
+		}
 
 		// Handle missing commands (e.g. disabled plugins)
 		if (!realCommand) {
@@ -551,7 +584,7 @@ export class CommandPanelView extends ItemView {
 				this.plugin.saveSettings();
 
 				// 执行反馈通知 (P0/P1 功能)
-				if (this.plugin.settings.showExecuteNotice) { // 需确保 settings.ts 里有这个开关
+				if (this.plugin.settings.showExecuteNotice && realCommand) {
 					new Notice(`Executed: ${cmdItem.customName || realCommand.name}`);
 				}
 			} else {

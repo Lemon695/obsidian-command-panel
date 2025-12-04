@@ -202,6 +202,16 @@ export class CommandPanelSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setName('Clear Search History')
+			.setDesc('Clear all saved search queries.')
+			.addButton(btn => btn
+				.setButtonText('Clear History')
+				.onClick(async () => {
+					this.plugin.clearSearchHistory();
+					new Notice('Search history cleared.');
+				}));
+
+		new Setting(containerEl)
 			.setName('Reset to Defaults')
 			.setDesc('⚠️ Clear all groups and restore default settings. This cannot be undone!')
 			.addButton(btn => btn

@@ -53,6 +53,7 @@ export interface CommandPanelSettings {
 	groups: CommandGroup[];
 	recentlyUsed: string[]; // 最近使用的命令 ID 列表
 	commandUsageCount: Record<string, number>; // 命令使用统计
+	searchHistory: string[]; // 搜索历史
 }
 
 // 默认设置
@@ -73,6 +74,7 @@ export const DEFAULT_SETTINGS: CommandPanelSettings = {
 	groups: [],
 	recentlyUsed: [],
 	commandUsageCount: {},
+	searchHistory: [],
 };
 
 export const VIEW_TYPE_COMMAND_PANEL = 'command-panel-view';

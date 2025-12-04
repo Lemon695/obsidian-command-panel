@@ -1,7 +1,7 @@
 {
 	"id": "command-panel",
 	"name": "Command Panel",
-	"version": "1.0.7",
+	"version": "1.0.8",
 	"minAppVersion": "1.7.7",
 	"description": "A visual sidebar panel to organize and execute commands.",
 	"author": "Lemon695",
