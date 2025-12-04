@@ -105,5 +105,20 @@ export class CommandPanelSettingTab extends PluginSettingTab {
 						new Notice('Reset complete.');
 					}
 				}));
+
+		new Setting(containerEl)
+			.setName('Grid Columns')
+			.setDesc('Number of columns in grid layout (2-8).')
+			.addSlider(slider => slider
+				.setLimits(2, 8, 1)
+				.setValue(this.plugin.settings.gridColumns)
+				.setDynamicTooltip()
+				.onChange(async (value) => {
+					this.plugin.settings.gridColumns = value;
+					await this.plugin.saveSettings();
+					// 如果视图是打开的，可能需要刷新，或者让 CSS 变量响应式生效（需要在 render 中重新注入）
+					// 最简单的办法是用户下次打开或我们手动触发刷新
+					// this.plugin.refreshViews(); // 需要你自己实现一个简单的刷新方法
+				}));
 	}
 }

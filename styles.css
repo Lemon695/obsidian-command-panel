@@ -72,7 +72,8 @@
 /* Layout: Grid */
 .command-panel-commands.layout-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+	/* 使用 CSS 变量，默认值为 4 */
+	grid-template-columns: repeat(var(--grid-columns, 4), 1fr);
 }
 
 /* Layout: List */
@@ -213,3 +214,6 @@
 *[draggable="true"]:active {
 	cursor: grabbing;
 }
+
+
+

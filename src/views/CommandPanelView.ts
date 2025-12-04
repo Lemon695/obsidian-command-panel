@@ -46,6 +46,9 @@ export class CommandPanelView extends ItemView {
 		container.empty();
 		container.addClass('command-panel-container');
 
+		// 让 settings.gridColumns 生效
+		container.style.setProperty('--grid-columns', this.plugin.settings.gridColumns.toString());
+
 		// 1. Search Bar
 		this.renderSearchBar(container);
 
