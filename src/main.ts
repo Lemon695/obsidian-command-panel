@@ -1,7 +1,7 @@
-import { Plugin, WorkspaceLeaf } from 'obsidian';
-import { CommandPanelSettings, DEFAULT_SETTINGS, VIEW_TYPE_COMMAND_PANEL, CommandGroup } from './types';
-import { CommandPanelView } from './views/CommandPanelView';
-import { CommandPanelSettingTab } from './settings';
+import {Plugin, WorkspaceLeaf} from 'obsidian';
+import {CommandPanelSettings, DEFAULT_SETTINGS, VIEW_TYPE_COMMAND_PANEL, CommandGroup} from './types';
+import {CommandPanelView} from './views/CommandPanelView';
+import {CommandPanelSettingTab} from './settings';
 
 export default class CommandPanelPlugin extends Plugin {
 	settings: CommandPanelSettings;
@@ -44,7 +44,7 @@ export default class CommandPanelPlugin extends Plugin {
 	}
 
 	async activateView() {
-		const { workspace } = this.app;
+		const {workspace} = this.app;
 
 		let leaf: WorkspaceLeaf | null = workspace.getLeavesOfType(VIEW_TYPE_COMMAND_PANEL)[0];
 
@@ -104,6 +104,55 @@ export default class CommandPanelPlugin extends Plugin {
 			this.settings.groups.forEach((g, i) => g.order = i);
 			this.saveSettings();
 		}
+	}
+
+	// 1. 重新排序分组
+	async reorderGroup(groupId: string, newIndex: number) {
+		const oldIndex = this.settings.groups.findIndex(g => g.id === groupId);
+		if (oldIndex < 0 || newIndex < 0 || newIndex >= this.settings.groups.length) return;
+
+		// 移动元素
+		const group = this.settings.groups[oldIndex];
+		this.settings.groups.splice(oldIndex, 1);
+		this.settings.groups.splice(newIndex, 0, group);
+
+		// 更新所有分组的 order 属性，确保数据一致性
+		this.settings.groups.forEach((g, i) => g.order = i);
+
+		await this.saveSettings();
+	}
+
+	// 2. 移动命令 (支持组内排序 和 跨组移动)
+	async moveCommand(commandId: string, sourceGroupId: string, targetGroupId: string, targetIndex: number) {
+		const sourceGroup = this.settings.groups.find(g => g.id === sourceGroupId);
+		const targetGroup = this.settings.groups.find(g => g.id === targetGroupId);
+
+		if (!sourceGroup || !targetGroup) return;
+
+		// 找到要移动的命令
+		const commandIndex = sourceGroup.commands.findIndex(c => c.commandId === commandId);
+		if (commandIndex < 0) return;
+
+		// 取出命令
+		const [commandToMove] = sourceGroup.commands.splice(commandIndex, 1);
+
+		// 如果是在同一个组内移动，且目标索引在原索引之后，需要修正索引（因为数组长度变小了）
+		if (sourceGroupId === targetGroupId && targetIndex > commandIndex) {
+			targetIndex--;
+		}
+
+		// 插入命令到目标位置
+		// 确保索引不越界
+		targetIndex = Math.max(0, Math.min(targetIndex, targetGroup.commands.length));
+		targetGroup.commands.splice(targetIndex, 0, commandToMove);
+
+		// 更新排序属性 (可选，取决于你是否依赖 order 字段)
+		sourceGroup.commands.forEach((c, i) => c.order = i);
+		if (sourceGroupId !== targetGroupId) {
+			targetGroup.commands.forEach((c, i) => c.order = i);
+		}
+
+		await this.saveSettings();
 	}
 
 	addCommandToGroup(groupId: string, commandId: string) {

@@ -5,6 +5,12 @@ import {AddGroupModal} from '../modals/AddGroupModal';
 import {AddCommandModal} from '../modals/AddCommandModal';
 import {ICON_DEFAULT_COMMAND} from '../utils/constants';
 
+interface DragData {
+	type: 'group' | 'command';
+	id: string; // commandId or groupId
+	sourceGroupId?: string; // only for command
+}
+
 export class CommandPanelView extends ItemView {
 	plugin: CommandPanelPlugin;
 	searchQuery: string = '';
@@ -129,6 +135,64 @@ export class CommandPanelView extends ItemView {
 
 	renderGroup(container: HTMLElement, group: CommandGroup) {
 		const groupDiv = container.createDiv('command-panel-group');
+
+		// --- 1. 分组拖拽逻辑 ---
+		groupDiv.draggable = true;
+		groupDiv.addEventListener('dragstart', (e) => {
+			e.stopPropagation(); // 防止冒泡（避免触发内部命令的拖拽）
+			const data: DragData = {type: 'group', id: group.id};
+			e.dataTransfer?.setData('application/json', JSON.stringify(data));
+			groupDiv.addClass('is-dragging');
+			// 设置拖拽效果
+			e.dataTransfer!.effectAllowed = 'move';
+		});
+
+		groupDiv.addEventListener('dragend', () => groupDiv.removeClass('is-dragging'));
+
+		// 分组作为放置目标 (允许把另一个分组拖到这里，或者把命令拖到这个分组)
+		groupDiv.addEventListener('dragover', (e) => {
+			e.preventDefault(); // 必须调用，否则无法 drop
+			e.stopPropagation();
+
+			// 添加视觉反馈
+			groupDiv.addClass('drag-over');
+			e.dataTransfer!.dropEffect = 'move';
+		});
+
+		groupDiv.addEventListener('dragleave', () => groupDiv.removeClass('drag-over'));
+
+		groupDiv.addEventListener('drop', async (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			groupDiv.removeClass('drag-over');
+
+			const dataStr = e.dataTransfer?.getData('application/json');
+			if (!dataStr) return;
+			const data: DragData = JSON.parse(dataStr);
+
+			if (data.type === 'group' && data.id !== group.id) {
+				// A. 分组排序逻辑
+				// 计算是插在当前分组前面还是后面
+				const rect = groupDiv.getBoundingClientRect();
+				const midY = rect.top + rect.height / 2;
+				// 如果鼠标在分组上半部分，插在前面；下半部分，插在后面
+				let newIndex = this.plugin.settings.groups.findIndex(g => g.id === group.id);
+				if (e.clientY > midY) newIndex++;
+
+				await this.plugin.reorderGroup(data.id, newIndex);
+				this.render();
+			} else if (data.type === 'command' && data.sourceGroupId) {
+				// B. 命令拖入分组标题 (移动到该分组末尾)
+				// 注意：如果是拖到具体的命令按钮上，会由 renderCommandButton 里的 drop 处理
+				await this.plugin.moveCommand(
+					data.id,
+					data.sourceGroupId,
+					group.id,
+					group.commands.length // 插到最后
+				);
+				this.render();
+			}
+		});
 
 		// Header
 		const header = groupDiv.createDiv('command-panel-group-header');
@@ -264,16 +328,75 @@ export class CommandPanelView extends ItemView {
 
 		// Drag and Drop (Basic HTML5 implementation for P0)
 		if (!isReadOnly && !this.searchQuery) {
-			btn.setAttribute('draggable', 'true');
+			btn.draggable = true;
+
+			// --- 2. 命令拖拽逻辑 ---
+
+			// Drag Start
 			btn.addEventListener('dragstart', (e) => {
-				e.dataTransfer?.setData('text/plain', JSON.stringify({
+				e.stopPropagation(); // 关键：防止触发分组的 dragstart
+				const data: DragData = {
 					type: 'command',
-					groupId: groupId,
-					commandId: cmdItem.commandId
-				}));
+					id: cmdItem.commandId,
+					sourceGroupId: groupId
+				};
+				e.dataTransfer?.setData('application/json', JSON.stringify(data));
 				btn.addClass('is-dragging');
+				e.dataTransfer!.effectAllowed = 'move';
 			});
+
+			// Drag End
 			btn.addEventListener('dragend', () => btn.removeClass('is-dragging'));
+
+			// Drag Over (允许其他命令插队到这个命令位置)
+			btn.addEventListener('dragover', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				btn.addClass('drag-over');
+			});
+
+			btn.addEventListener('dragleave', () => btn.removeClass('drag-over'));
+
+			// Drop
+			btn.addEventListener('drop', async (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				btn.removeClass('drag-over');
+
+				const dataStr = e.dataTransfer?.getData('application/json');
+				if (!dataStr) return;
+				const data: DragData = JSON.parse(dataStr);
+
+				if (data.type === 'command' && data.sourceGroupId) {
+					// 计算插入位置：如果鼠标在按钮左侧/上方，插在当前按钮前；否则插在后
+					const rect = btn.getBoundingClientRect();
+					const isHorizontal = this.plugin.settings.layout !== 'list'; // 网格模式主要看 X 轴，列表看 Y 轴
+
+					let insertAfter = false;
+					if (isHorizontal) {
+						const midX = rect.left + rect.width / 2;
+						insertAfter = e.clientX > midX;
+					} else {
+						const midY = rect.top + rect.height / 2;
+						insertAfter = e.clientY > midY;
+					}
+
+					// 获取当前目标命令的索引
+					const targetGroup = this.plugin.settings.groups.find(g => g.id === groupId);
+					if (!targetGroup) return;
+
+					let targetIndex = targetGroup.commands.findIndex(c => c.commandId === cmdItem.commandId);
+					if (insertAfter) targetIndex++;
+
+					await this.plugin.moveCommand(
+						data.id,
+						data.sourceGroupId,
+						groupId, // 目标分组 ID
+						targetIndex
+					);
+					this.render();
+				}
+			});
 		}
 	}
 

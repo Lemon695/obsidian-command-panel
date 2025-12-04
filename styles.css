@@ -184,3 +184,32 @@
 	opacity: 0.5;
 	border: 1px dashed var(--text-muted);
 }
+
+/* 拖拽时的源元素样式 */
+.command-panel-button.is-dragging,
+.command-panel-group.is-dragging {
+	opacity: 0.4;
+	filter: grayscale(100%);
+	border: 1px dashed var(--text-muted);
+}
+
+/* 拖拽进入目标区域的样式 */
+.command-panel-button.drag-over {
+	/* 使用 box-shadow 代替 border 防止布局抖动 */
+	box-shadow: 0 0 0 2px var(--interactive-accent);
+	transform: scale(1.05);
+	z-index: 10;
+}
+
+.command-panel-group.drag-over {
+	border-color: var(--interactive-accent);
+	background-color: var(--background-primary-alt);
+}
+
+/* 阻止默认的幽灵图像干扰 (可选) */
+*[draggable="true"] {
+	cursor: grab;
+}
+*[draggable="true"]:active {
+	cursor: grabbing;
+}
